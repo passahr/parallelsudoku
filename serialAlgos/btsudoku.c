@@ -2,6 +2,8 @@
 // A Backtracking program  in C
 // to solve Sudoku problem
 #include <stdio.h>
+
+#include <stdbool.h>
  
 // UNASSIGNED is used for empty
 // cells in sudoku grid
