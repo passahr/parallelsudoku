@@ -5,10 +5,10 @@
 #include <time.h>
 #include <assert.h>
 
-#include "datastructures/arraylist.h"
-#include "datastructures/preemptive_set.h"
-#include "datastructures/cellist.h"
-#include "datastructures/stack.h"
+#include "../datastructures/arraylist.h"
+#include "../datastructures/preemptive_set.h"
+#include "../datastructures/cellist.h"
+#include "../datastructures/stack.h"
 
 #define SIZE 16
 #define MAXCHAR 256
