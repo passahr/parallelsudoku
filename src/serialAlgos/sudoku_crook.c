@@ -753,8 +753,6 @@ int cross_out(int i)
         cross_out_col(p.values, p);
     //else if (same_box(&p) == 0)
     //cross_out_box(p.values, p);
-    //preemp_print(sets);
-    //printf("FINE CROSS OUT\n");
     return 0;
 }
 
