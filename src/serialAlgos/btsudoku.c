@@ -1,7 +1,7 @@
 /*btSolve function will be our main function, it'll mantain its recursive structure, the true parallelization
  will be implemented inside the check function, since it'll be called much more times and it fits pretty well in a
  parallel implementation*/
-//minor bug in check function, almost working.
+//working
 
 #include <stdio.h>
 
