@@ -22,4 +22,6 @@ SOLUZIONE\I
 | 7 | 8 | 4 | 1 | 2 | 6 | 5 | 3 | 9 |
 | 1 | 2 | 5 | 4 | 9 | 3 | 8 | 6 | 7 |
 | 6 | 3 | 9 | 7 | 8 | 5 | 1 | 4 | 2 |
-COLPI DI CLOCK 2274390
+PARALLEL
+COLPI DI CLOCK: 20875
+TEMPO IMPIEGATO: 0.020875s

@@ -46,6 +46,32 @@ preemptive_struct preemp_get(prelist* l, unsigned int index){
 	return l->body[index];
 }
 
+prelist* prelist_slice(prelist* l, unsigned int index, unsigned int length)
+{
+	assert(index + length <= l->size);
+	prelist* new_list = preemp_create();
+	preemp_allocate(new_list, length);
+	memmove(new_list->body, l->body + index, length * sizeof(void*));
+	new_list->size = length;
+	return new_list;
+}
+
+/**
+ * Return a slice of the list (from index to the end) as a new list.
+ */
+prelist* prelist_slice_end(prelist* l, unsigned int index)
+{
+	return prelist_slice(l, index, l->size - index);
+}
+
+/**
+ * Return a copy of the list.
+ */
+prelist* prelist_copy(prelist* l)
+{
+	return prelist_slice_end(l, 0);
+}
+
 void preemp_print(prelist* p){
     if (p != NULL){
     for (int i = 0; i < p->size; i++){

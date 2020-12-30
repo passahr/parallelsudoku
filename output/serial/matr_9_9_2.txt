@@ -22,4 +22,6 @@ SOLUZIONE\I
 | 7 | 6 | 9 | 1 | 5 | 4 | 3 | 2 | 8 |
 | 4 | 5 | 3 | 6 | 8 | 2 | 9 | 7 | 1 |
 | 1 | 8 | 2 | 9 | 3 | 7 | 4 | 6 | 5 |
-COLPI DI CLOCK 51356
+SERIAL
+COLPI DI CLOCK: 19714
+TEMPO IMPIEGATO: 0.019714s

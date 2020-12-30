@@ -24,6 +24,9 @@ void preemp_allocate(prelist* l, unsigned int size);
 void preemp_add(prelist *p, preemptive_struct item);
 void preemp_print(prelist* p);
 void p_print(preemptive_struct ps);
+prelist* prelist_copy(prelist* l);
+prelist* prelist_slice_end(prelist* l, unsigned int index);
+prelist* prelist_slice(prelist* l, unsigned int index, unsigned int length);
 preemptive_struct preemp_remove(prelist* l,unsigned int index);
 preemptive_struct preemp_get(prelist* l, unsigned int index);
 
