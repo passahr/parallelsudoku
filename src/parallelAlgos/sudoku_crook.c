@@ -5,6 +5,7 @@
 #include <time.h>
 #include <assert.h>
 #include <pthread.h>
+#include <unistd.h>
 
 #include "../datastructures/arraylist.h"
 #include "../datastructures/preemptive_set.h"
@@ -28,8 +29,10 @@ int SIZE = 0;
 
 
 int intervallo = 0;
+int soluzione = 0;
 
-
+volatile int running_threads = 0;
+pthread_mutex_t running_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /****************************************************
  * 
@@ -424,8 +427,9 @@ int update(int upd, int** sudoku, int** r, int** c, int** b, int*** cell, cellis
         //printf("AGGIUNTI TUTTI I SINGLETON  \n");
         if (check(sudoku) == -1)
             find_preemptive(sudoku, r, c, b, cell, empty_cell, sets);
-        else
+        else{   
             print_sudoku(sudoku);
+        }
         return 1;
     }
     return res;
@@ -877,8 +881,7 @@ int** copy2d(int** array){
     int** nuovo = malloc(SIZE * sizeof(int*));
     for (int i = 0; i < SIZE; i++){
         nuovo[i] = malloc(SIZE * sizeof(int));
-        for (int j = 0; j < SIZE; j++)
-            nuovo[i][j] = array[i][j];
+        memcpy(nuovo[i], array[i], SIZE * sizeof(int));
     }
     return nuovo;
 }
@@ -889,13 +892,73 @@ int*** copy3d(int*** array){
         nuovo[i] = malloc(SIZE * sizeof(int*));
         for (int j = 0; j < SIZE; j++){
             nuovo[i][j] = malloc(SIZE * sizeof(int));
-            for (int k = 0; k < SIZE; k++)
-                nuovo[i][j][k] = array[i][j][k];
+            memcpy(nuovo[i][j], array[i][j], SIZE * sizeof(int));
         }
     }
     return nuovo;
 }
 
+void* parallel_forcing(void* input){
+    args* inp = (args*) input;
+    //printf("THREAD ID{VAL: %d, CELL: (%d, %d)}\n", inp->value, inp->cella.i, inp->cella.j);
+    if (force(1, inp->sudoku, inp->r,inp->c,inp->b,inp->cell,inp->empty_cell,inp->stack_cell,inp->sets) == 1){
+        clock_t t2 = clock();
+        printf("PARALLEL\n");
+        printf("COLPI DI CLOCK: %lu\n", t2 - inp->t1);
+        printf("TEMPO IMPIEGATO: %fs\n", (double) (t2 - inp->t1) / CLOCKS_PER_SEC);
+    }
+    return NULL;
+}
+
+
+void launch(int k, int** sudoku, int** r, int** c, int** b, int*** cell, cellist* empty_cell, 
+          list_cellist* stack_cell, prelist* sets, clock_t t1){
+    /*************************************************************************
+     *  DESCRIZIONE: SELEZIONE LA CELLA CHE HA IL MARKUP DI LUNGHEZZA MAGGIORE
+     *  E LANCIA TANTI THREAD QUANTI SONO I VALORI POSSIBILI PER LA CELLA
+     *  I THREAD CHE ARRIVANO AD UNA SOLUZIONE LA STAMPANO
+     *************************************************************************/
+        cell_struct massima = cell_get_min(empty_cell, cell);
+        int i = massima.i;
+        int j = massima.j;
+        args argomenti[SIZE];
+        pthread_t threads[SIZE];
+        //printf("GRANDEZZA_INTERSEZIONE: %d\n", get_size_inters(i, j, cell));
+        for(int x = 0; x < SIZE; x++){
+            if (cell[i][j][x] == 0)
+             continue;
+            //argomenti[x] = malloc(sizeof(args));
+            argomenti[x].value = -1;
+            argomenti[x].cella = massima;
+            argomenti[x].i = k;
+            argomenti[x].sudoku = copy2d(sudoku);
+            argomenti[x].r = copy2d(r);
+            argomenti[x].c = copy2d(c);
+            argomenti[x].b = copy2d(b);
+            argomenti[x].cell = copy3d(cell);
+            argomenti[x].stack_cell = list_cell_create();
+            argomenti[x].empty_cell = cell_copy(empty_cell);
+            argomenti[x].t1 = t1;
+            if (sets->size > 0)
+                argomenti[x].sets = prelist_copy(sets);
+            else 
+                argomenti[x].sets = preemp_create();
+            //threads[x] = malloc(sizeof(pthread_t));
+            argomenti[x].sudoku[i][j] = cell[i][j][x];
+            if (check_sudo(i, j, argomenti[x].sudoku) == -1)
+                continue;
+            argomenti[x].value = cell[i][j][x];
+            celllist_remove(argomenti[x].empty_cell, massima);
+/*             pthread_mutex_lock(&running_mutex);
+            running_threads++;
+            pthread_mutex_unlock(&running_mutex);*/
+            pthread_create(&threads[x], NULL, &parallel_forcing, &argomenti[x]);
+            pthread_detach(threads[x]);
+        }
+        pthread_exit(0);
+        //while (running_threads > 0){}
+            
+}
 
 int force(int k, int** sudoku, int** r, int** c, int** b, int*** cell, cellist* empty_cell, 
           list_cellist* stack_cell, prelist* sets)
@@ -915,7 +978,7 @@ int force(int k, int** sudoku, int** r, int** c, int** b, int*** cell, cellist* 
      * 
      ********************************************/
     if (empty_cell->size == 0)
-    {
+    {              
         print_sudoku(sudoku);
         return 1;
     }
@@ -1031,9 +1094,9 @@ int main(int argc, char *argv[])
     for (int i = 0; i < SIZE; i++)
         markup(sudoku, i, righe, colonne, boxs); //RICREO IL MARKUP
     if (check(sudoku) == -1)
-       force(1, sudoku, righe, colonne, boxs, cell, empty_cell, stack_cell, sets);
+       launch(1, sudoku, righe, colonne, boxs, cell, empty_cell, stack_cell, sets, t1);
     t2 = clock();
-    printf("SERIAL\n");
+    printf("PARALLEL\n");
     printf("COLPI DI CLOCK: %lu\n", t2 - t1);
     printf("TEMPO IMPIEGATO: %fs\n", (double) (t2 - t1) / CLOCKS_PER_SEC);
     for (int i = 0; i < SIZE; i++){
@@ -1055,6 +1118,7 @@ int main(int argc, char *argv[])
 
 void print_sudoku(int** sudoku)
 {
+    pthread_mutex_lock(&running_mutex); 
     for (int i = 0; i < SIZE; i++)
         printf(" ___");
     printf("\n");
@@ -1075,6 +1139,7 @@ void print_sudoku(int** sudoku)
         }
         printf("|\n");
     }
+    pthread_mutex_unlock(&running_mutex);  
 }
 
 int** read_input(char *filename)

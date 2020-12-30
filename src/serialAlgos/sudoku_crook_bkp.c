@@ -4,13 +4,11 @@
 #include <math.h>
 #include <time.h>
 #include <assert.h>
-#include <pthread.h>
 
 #include "../datastructures/arraylist.h"
 #include "../datastructures/preemptive_set.h"
 #include "../datastructures/cellist.h"
 #include "../datastructures/stack.h"
-//#include "../datastructures/list.h"
 
 #include "./sudoku_crook.h"
 
@@ -26,10 +24,43 @@ int SIZE = 0;
  * 
  ****************************************************/
 
+int sudoku[SSIZE][SSIZE];
+/*****************************************************
+    TRICKY:                   {8,  0, 9, 0,     10, 0, 0, 12,     16, 0, 15,0,    0, 0, 0, 4},
+                              {0,0, 15, 0,     0,0,5, 0,      0, 7,0, 10,         0, 0, 13,  0},
+                              {2, 0, 0,0,     0, 0, 0, 4,      0,0,0, 0,          0,16,0, 14},
+                              { 0, 6,0, 3,    0, 0,14,0,      0, 0, 11, 0,        9, 0, 0,  0}, 
+                              
+                              { 0,0,0,0,     0, 9,0, 0,         1, 0, 0,2,        0, 0, 0, 7},
+                              {11,0, 0, 0,     14, 0, 0, 6,      0, 0, 0, 0,      0, 13,0,0},
+                               {0, 7, 0, 16,    0, 2, 0, 0,     12,0,0, 0,        0, 0, 1, 0},
+                               {0, 0, 0, 5,     8,0, 0,13,      0, 3, 0, 0,        0,0, 0, 9},
+                                                                                                                
+                              {12, 0,4,0,      0, 0, 7, 0,     13,0, 8, 0,      11, 0, 0, 0},
+                               {0, 5, 0, 8,     0, 13, 0, 10,      0, 16, 0,4,     0, 0, 0,0},
+                               {0, 0, 14, 0,     0,0, 9, 0,      6, 0,0, 11,      0,1, 0, 3},
+                              {1,0, 0, 0,      3, 0,0,5,      0, 0, 0, 0,      6, 0,16, 0},
+                              
+                              {14,0, 7,0,      0, 0, 10,0,      0,12,0, 9,      0, 8, 2, 0},
+                               {0, 16,0, 12,      0, 14, 0, 3,     0, 0, 0, 0,     13,0, 0, 11},
+                               {5, 10, 0, 0,      6,0,11, 0,     0, 0, 14,0,      0, 7, 0,0},
+                               {15, 0, 1, 0,     0, 0, 0, 2,      0, 0, 0, 5,      0, 0,0, 12}};
 
+                               SOLVED ?
+
+  
+ ****************************************************/
 int intervallo = 0;
 
+int righe[SSIZE][SSIZE];
+int colonne[SSIZE][SSIZE];
+int boxs[SSIZE][SSIZE];
+int cell[SSIZE][SSIZE][SSIZE];
 
+int size_stack;
+cellist **stack_cell;
+cellist *empty_cell;
+prelist *sets;
 
 /****************************************************
  * 
@@ -37,7 +68,7 @@ int intervallo = 0;
  * 
  ****************************************************/
 
-void print_riga_i(int i, int** righe)
+void print_riga_i(int i)
 {
     printf("[%d", righe[i][0]);
     for (int j = 1; j < SIZE - 1; j++)
@@ -46,7 +77,7 @@ void print_riga_i(int i, int** righe)
     printf("\n");
 }
 
-void print_col_i(int i, int** colonne)
+void print_col_i(int i)
 {
     printf("[%d", colonne[i][0]);
     for (int j = 1; j < SIZE - 1; j++)
@@ -55,7 +86,7 @@ void print_col_i(int i, int** colonne)
     printf("\n");
 }
 
-void print_boxs_i(int i, int** boxs)
+void print_boxs_i(int i)
 {
     printf("[%d", boxs[i][0]);
     for (int j = 1; j < SIZE - 1; j++)
@@ -64,7 +95,7 @@ void print_boxs_i(int i, int** boxs)
     printf("\n");
 }
 
-void print_markup_cell(int x, int y, int*** cell)
+void print_markup_cell(int x, int y)
 {
     printf("[%d", cell[x][y][0]);
     for (int i = 1; i < SIZE - 1; i++)
@@ -73,7 +104,7 @@ void print_markup_cell(int x, int y, int*** cell)
     printf("\n");
 }
 
-int markup(int** sudoku, int i, int** righe, int** colonne, int** boxs)
+int markup(int i)
 {
     /********************************************
      * INPUT:       Indice i
@@ -83,13 +114,13 @@ int markup(int** sudoku, int i, int** righe, int** colonne, int** boxs)
      *              rispettivamente in riga(i), colonna(i), box(i).
      * 
      ********************************************/
-    markup_row(i, sudoku, righe);
-    markup_col(i, sudoku, colonne);
-    markup_box(i, sudoku, boxs);
+    markup_row(i);
+    markup_col(i);
+    markup_box(i);
     return 0;
 }
 
-int markup_row(int i, int** sudoku, int** righe)
+int markup_row(int i)
 {
     for (int k = 0; k < SIZE; k++)
         righe[i][k] = k + 1;
@@ -101,7 +132,7 @@ int markup_row(int i, int** sudoku, int** righe)
     return 0;
 }
 
-int markup_col(int i, int** sudoku, int** colonne)
+int markup_col(int i)
 {
     for (int k = 0; k < SIZE; k++)
         colonne[i][k] = k + 1;
@@ -113,7 +144,7 @@ int markup_col(int i, int** sudoku, int** colonne)
     return 0;
 }
 
-int markup_box(int i, int** sudoku, int** boxs)
+int markup_box(int i)
 {
     for (int k = 0; k < SIZE; k++)
         boxs[i][k] = k + 1;
@@ -132,7 +163,7 @@ int markup_box(int i, int** sudoku, int** boxs)
     return 0;
 }
 
-int inters_static(int riga, int colonna, int box, int** righe, int** colonne, int** boxs, int*** cell)
+int inters_static(int riga, int colonna, int box)
 {
     int counter = 0; //Conta elementi in intersezione
     for (int i = 0; i < SIZE; i++)
@@ -148,7 +179,7 @@ int inters_static(int riga, int colonna, int box, int** righe, int** colonne, in
     return counter;
 }
 
-int get_value_celle(int riga, int colonna, int*** cell)
+int get_value_celle(int riga, int colonna)
 {
     for (int i = 0; i < SIZE; i++)
         if (cell[riga][colonna][i] != 0)
@@ -156,7 +187,7 @@ int get_value_celle(int riga, int colonna, int*** cell)
     return -1;
 }
 
-int get_size_inters(int riga, int colonna, int*** cell)
+int get_size_inters(int riga, int colonna)
 {
     int counter = 0;
     for (int i = 0; i < SIZE; i++)
@@ -167,8 +198,7 @@ int get_size_inters(int riga, int colonna, int*** cell)
     return counter;
 }
 
-int markup_cell(int x, int y, int update, int** sudoku, int** righe, int** colonne, int** boxs, int*** cell, 
-                cellist* empty_cell)
+int markup_cell(int x, int y, int update)
 {
     /**************************
      * INPUT:       Coordinate x ed y della tabella
@@ -181,34 +211,30 @@ int markup_cell(int x, int y, int update, int** sudoku, int** righe, int** colon
      *              Nel caso in cui non trova nessun singleton allora ritorna, se la cella non è presente nella
      *              lista di celle vuote allora la aggiunge
      **************************/
-    int inters = inters_static(x, y, get_box(x, y), righe, colonne, boxs, cell);
-    //print_riga_i(x, righe);  
+    int inters = inters_static(x, y, get_box(x, y));
     if (inters == 0)
         return 2;
-    if (get_size_inters(x, y, cell) == 1)
+    if (get_size_inters(x, y) == 1)
     {
-        int idx = get_value_celle(x, y, cell);
+        int idx = get_value_celle(x, y);
         sudoku[x][y] = cell[x][y][idx];
-        if (check_sudo(x, y, sudoku) == -1)
+        if (check_sudo(x, y) == -1)
         {
             sudoku[x][y] = 0;
             return -1;
         }
-        //print_sudoku(sudoku);
         cell[x][y][idx] = 0;
         cell_struct cella = {.i = x, .j = y};
-        if (empty_cell->size > 0)
-            celllist_remove(empty_cell, cella);
+        celllist_remove(empty_cell, cella);
 
         for (int i = 0; i < SIZE; i++)
-            markup(sudoku, i, righe, colonne, boxs);
-        int res = step2(0, sudoku, righe, colonne, boxs, cell, empty_cell);
+            markup(i);
+        int res = step2(0);
         if (res != 0)
             return res;
         return 1;
     }
     cell_struct cella = {.i = x, .j = y};
-    //printf("empty_cell->size: %d\n", empty_cell->size);
     int idx = binarySearch_cell(empty_cell, cella);
     if (idx == -1)
         cell_add(empty_cell, cella);
@@ -268,7 +294,7 @@ int get_i_box(int i)
     return step - intervallo;
 }
 
-void clear_preemptive(prelist* sets)
+void clear_preemptive()
 {
     /********************************************
      * DESCRIZIONE: Permette di liberare la memoria occupata dai preemptive set
@@ -281,7 +307,7 @@ void clear_preemptive(prelist* sets)
     }
 }
 
-int check_row(int i, int j, int** sudoku)
+int check_row(int i, int j)
 {
     /********************************************
      * DESCRIZIONE: Coontrolla se esiste una cella sulla stessa riga 
@@ -299,7 +325,7 @@ int check_row(int i, int j, int** sudoku)
     return 0;
 }
 
-int check_col(int i, int j, int** sudoku)
+int check_col(int i, int j)
 {
     /********************************************
      * DESCRIZIONE: Coontrolla se esiste una cella sulla stessa colonna 
@@ -317,7 +343,7 @@ int check_col(int i, int j, int** sudoku)
     return 0;
 }
 
-int check_box(int i, int j, int** sudoku)
+int check_box(int i, int j)
 {
     /********************************************
      * DESCRIZIONE: Coontrolla se esiste una cella nello stesso box 
@@ -341,18 +367,18 @@ int check_box(int i, int j, int** sudoku)
     return 0;
 }
 
-int check_sudo(int i, int j, int** sudoku)
+int check_sudo(int i, int j)
 {
     /********************************************
      * DESCRIZIONE: Coontrolla se esiste una cella sulla stessa riga, colonna, box 
      *              della cella i, j 
      ********************************************/
-    if (check_row(i, j, sudoku) == -1 || check_col(i, j, sudoku) == -1 || check_col(i, j, sudoku) == -1)
+    if (check_row(i, j) == -1 || check_col(i, j) == -1 || check_col(i, j) == -1)
         return -1;
     return 0;
 }
 
-int check(int** sudoku)
+int check()
 {
     /********************
      * DESCRIZIONE: Verifica che il sudoku sia completo, se trova almeno una cella
@@ -369,7 +395,7 @@ int check(int** sudoku)
     return 0;
 }
 
-int step2(int update, int** sudoku, int** r, int** c, int** b, int*** cell, cellist* empty_cell)
+int step2(int update)
 {
     /********************************************
      * DESCRIZIONE: Chiama la funzione che effettua il markup di ogni cella
@@ -382,7 +408,7 @@ int step2(int update, int** sudoku, int** r, int** c, int** b, int*** cell, cell
         {
             if (sudoku[i][j] == 0)
             {
-                int res = markup_cell(i, j, update, sudoku, r, c, b, cell, empty_cell);
+                int res = markup_cell(i, j, update);
                 if (res == -1)
                 {
                     //printf("SUDOKU VIOLATO\n");
@@ -404,7 +430,7 @@ int step2(int update, int** sudoku, int** r, int** c, int** b, int*** cell, cell
     return 0;
 }
 
-int update(int upd, int** sudoku, int** r, int** c, int** b, int*** cell, cellist* empty_cell, prelist* sets)
+int update(int upd)
 {
     /********************************************
      * DESCRIZIONE: Chiama la funzione che effettua il markup delle righe colonne e box
@@ -414,24 +440,33 @@ int update(int upd, int** sudoku, int** r, int** c, int** b, int*** cell, cellis
      *              Dunque cerco i preemptive sets
      ********************************************/
     for (int i = 0; i < SIZE; i++)
-        markup(sudoku, i, r, c, b);
+        markup(i);
     //printf("MARKUP FATTO\n");
-    int res = step2(upd, sudoku, r, c, b, cell, empty_cell);
+    if (sets->size != 0)
+    {
+
+        free(sets);
+        sets = preemp_create();
+    }
+    int res = step2(upd);
     if (res == -1)
+    {
+        //printf("SUDOKU VIOLATO\n");
         return -1;
-    if ((res == 1 || res == 0) && check(sudoku) != -1)
+    }
+    if ((res == 1 || res == 0) && check() != -1)
     {
         //printf("AGGIUNTI TUTTI I SINGLETON  \n");
-        if (check(sudoku) == -1)
-            find_preemptive(sudoku, r, c, b, cell, empty_cell, sets);
+        if (check() == -1)
+            find_preemptive();
         else
-            print_sudoku(sudoku);
+            print_sudoku();
         return 1;
     }
     return res;
 }
 
-int find_preemptive(int** sudoku, int** r, int** c, int** b, int*** cell, cellist* empty_cell, prelist *sets)
+int find_preemptive()
 {
     /********************************************
      * DESCRIZIONE: Chiama la funzione che trova i preemptive set
@@ -443,20 +478,18 @@ int find_preemptive(int** sudoku, int** r, int** c, int** b, int*** cell, cellis
      *              Successivamente libera memoria e richiama la funzione che aggiorna
      *              il markup e verifica l'esistenza dei singleton
      ********************************************/
-    list_cellist *l = find_preemptive_rec_i(4, cell, empty_cell, sets);
+    list_cellist *l = find_preemptive_rec_i(4);
     if (sets->size == 0)
         return -1;
     for (int i = 0; i < sets->size; i++)
-        cross_out(i, sudoku, cell, empty_cell, sets);
+        cross_out(i);
     for (int i = 0; i < l->size; i++)
     {
         free(l->body[i]->body); //LIBERO GLI SLOT RIMANENTI
         free(l->body[i]);
     }
     free(l); //LIBERO LO SPAZIO ALLOCATO PER LA LISTA DI LISTE DI CELLE
-    int res = step2(0, sudoku, r, c, b, cell, empty_cell);
-    for (int i = 0; i < sets->size; i++)
-        preemp_remove(sets, i);
+    int res = step2(0);
     return res;
 }
 
@@ -494,26 +527,6 @@ void list_cell_add(list_cellist *l, cellist *item)
     l->body[l->size++] = item;
 }
 
-cellist* list_cell_pop(list_cellist* l)
-{
-	assert(l->size > 0);
-	return l->body[--l->size];
-}
-
-list_cellist* list_cell_slice(list_cellist* l, unsigned int index, unsigned int length)
-{
-	assert(index + length <= l->size);
-	list_cellist* new_list = list_cell_create();
-	list_cell_allocate(new_list, length);
-	memmove(new_list->body, l->body + index, length * sizeof(void*));
-	new_list->size = length;
-	return new_list;
-}
-
-list_cellist* list_cell_copy(list_cellist* l){
-    return list_cell_slice(l, 0, l->size);
-}
-
 arraylist *unione_static(int a[SIZE], int b[SIZE])
 {
     arraylist *u = arraylist_create();
@@ -540,7 +553,7 @@ arraylist *unione_dynamic_static(arraylist *u, int b[SIZE])
     return u;
 }
 
-list_cellist *find_preemptive_rec_i(int k, int*** cell, cellist* empty_cell, prelist *sets)
+list_cellist *find_preemptive_rec_i(int k)
 {
     /********************************************
      * 
@@ -589,7 +602,7 @@ list_cellist *find_preemptive_rec_i(int k, int*** cell, cellist* empty_cell, pre
         return lista_di_liste_di_celle;
     }
     list_cellist *nuova_lista = list_cell_create();
-    list_cellist *k_meno_uno_celle = find_preemptive_rec_i(k - 1, cell, empty_cell, sets);
+    list_cellist *k_meno_uno_celle = find_preemptive_rec_i(k - 1);
 
     for (int i = 0; i < empty_cell->size; i++)
     {
@@ -712,7 +725,7 @@ int same_box(preemptive_struct *p)
     return 0;
 }
 
-int cross_out(int i, int** sudoku, int*** cell, cellist* empty_cell, prelist *sets)
+int cross_out(int i)
 {
     /**********************************************************
      * IMPORTANTE: Devo capire come devo eliminare i valori nelle altre celle
@@ -728,15 +741,15 @@ int cross_out(int i, int** sudoku, int*** cell, cellist* empty_cell, prelist *se
      **********************************************************/
     preemptive_struct p = preemp_get(sets, i);
     if (same_row(&p) == 0)
-        cross_out_row(p.values, p, sudoku, cell, empty_cell);
+        cross_out_row(p.values, p);
     else if (same_col(&p) == 0)
-        cross_out_col(p.values, p, sudoku, cell, empty_cell);
+        cross_out_col(p.values, p);
     //else if (same_box(&p) == 0)
     //cross_out_box(p.values, p);
     return 0;
 }
 
-int cross_out_col(arraylist *v, preemptive_struct ps, int** sudoku, int*** cell, cellist* empty_cell)
+int cross_out_col(arraylist *v, preemptive_struct ps)
 {
     int col = ps.cells->body[0].j;
     for (int i = 0; i < SIZE; i++)
@@ -747,10 +760,10 @@ int cross_out_col(arraylist *v, preemptive_struct ps, int** sudoku, int*** cell,
             {
                 if (cell[i][col][ps.values->body[k] - 1] != 0)
                     cell[i][col][ps.values->body[k] - 1] = 0;
-                if (get_size_inters(i, col, cell) == 1)
+                if (get_size_inters(i, col) == 1)
                 {
                     //printf("SE IL MARKUP DELLA CELLA E' UN SINGLETON\n");
-                    int idx = get_value_celle(i, col, cell);
+                    int idx = get_value_celle(i, col);
                     sudoku[i][col] = cell[i][col][idx];
                     cell_struct cella = {.i = i, .j = col};
                     celllist_remove(empty_cell, cella);
@@ -761,7 +774,7 @@ int cross_out_col(arraylist *v, preemptive_struct ps, int** sudoku, int*** cell,
     return 0;
 }
 
-int cross_out_box(arraylist *v, preemptive_struct ps, int** sudoku, int*** cell, cellist* empty_cell)
+int cross_out_box(arraylist *v, preemptive_struct ps)
 {
     int num_box = get_box(ps.cells->body[0].i, ps.cells->body[0].j);
     int i = get_i_box(num_box);
@@ -777,9 +790,9 @@ int cross_out_box(arraylist *v, preemptive_struct ps, int** sudoku, int*** cell,
                     if (cell[x][y][ps.values->body[k] - 1] != 0)
                         cell[x][y][ps.values->body[k] - 1] = 0;
                 }
-                if (get_size_inters(x, y, cell) == 1)
+                if (get_size_inters(x, y) == 1)
                 {
-                    int idx = get_value_celle(x, y, cell);
+                    int idx = get_value_celle(x, y);
                     sudoku[x][y] = cell[x][y][idx];
                     cell_struct cella = {.i = x, .j = y};
                     celllist_remove(empty_cell, cella);
@@ -790,7 +803,7 @@ int cross_out_box(arraylist *v, preemptive_struct ps, int** sudoku, int*** cell,
     return 0;
 }
 
-int cross_out_row(arraylist *v, preemptive_struct ps, int** sudoku, int*** cell, cellist* empty_cell)
+int cross_out_row(arraylist *v, preemptive_struct ps)
 {
     /****************************************************************************************
      * INPUT:           UNA LISTA DI VALORI ED UNA CELLA
@@ -814,10 +827,10 @@ int cross_out_row(arraylist *v, preemptive_struct ps, int** sudoku, int*** cell,
             {
                 if (cell[row][j][ps.values->body[k] - 1] != 0)
                     cell[row][j][ps.values->body[k] - 1] = 0;
-                if (get_size_inters(row, j, cell) == 1)
+                if (get_size_inters(row, j) == 1)
                 {
                     //printf("SE IL MARKUP DELLA CELLA E' UN SINGLETON\n");
-                    int idx = get_value_celle(row, j, cell);
+                    int idx = get_value_celle(row, j);
                     sudoku[row][j] = cell[row][j][idx];
                     cell_struct cella = {.i = row, .j = j};
                     celllist_remove(empty_cell, cella);
@@ -828,34 +841,37 @@ int cross_out_row(arraylist *v, preemptive_struct ps, int** sudoku, int*** cell,
     return 0;
 }
 
-cell_struct cell_get_min(cellist *l, int*** cell)
+int stack_add_list(cellist *l)
+{
+    cellist *nuovlista = cell_copy(l);
+    stack_cell = realloc(stack_cell, (size_stack + 1) * sizeof(cellist *));
+    stack_cell[size_stack] = nuovlista;
+    size_stack += 1;
+    return 0;
+}
+
+cellist *stack_pop_list()
+{
+    assert(size_stack > 0);
+    cellist *l = stack_cell[size_stack - 1];
+    size_stack -= 1;
+    return l;
+}
+
+cell_struct cell_get_min(cellist *l)
 {
     //OTTIENE LA CELLA CON IL MINOR NUMERO POSSIBILE DI VALORI NEL MARKUP
     cell_struct minima = l->body[0];
     for (int i = 1; i < l->size; i++)
     {
         cell_struct altra = l->body[i];
-        if (get_size_inters(minima.i, minima.j, cell) > get_size_inters(altra.i, altra.j, cell))
+        if (get_size_inters(minima.i, minima.j) < get_size_inters(altra.i, altra.j))
             minima = altra;
     }
     return minima;
 }
 
-cell_struct cell_get_max(cellist *l, int*** cell)
-{
-    //OTTIENE LA CELLA CON IL MINOR NUMERO POSSIBILE DI VALORI NEL MARKUP
-    cell_struct massima = l->body[0];
-    for (int i = 1; i < l->size; i++)
-    {
-        cell_struct altra = l->body[i];
-        if (get_size_inters(massima.i, massima.j, cell) < get_size_inters(altra.i, altra.j, cell))
-            massima = altra;
-    }
-    return massima;
-}
-
-
-int restore_sudoku(int** sudoku, int** r, int** c, int** b, cellist* empty_cell)
+int restore_sudoku()
 {
     /********************************************
      * DESCRIZIONE: Ripristina il sudoku dopo che l'algoritmo si accorge di aver trovato una cofigurazione sbagliata
@@ -869,36 +885,11 @@ int restore_sudoku(int** sudoku, int** r, int** c, int** b, cellist* empty_cell)
         sudoku[c.i][c.j] = 0;
     }
     for (int i = 0; i < SIZE; i++)
-        markup(sudoku, i, r, c, b);
+        markup(i);
     return 0;
 }
 
-int** copy2d(int** array){
-    int** nuovo = malloc(SIZE * sizeof(int*));
-    for (int i = 0; i < SIZE; i++){
-        nuovo[i] = malloc(SIZE * sizeof(int));
-        for (int j = 0; j < SIZE; j++)
-            nuovo[i][j] = array[i][j];
-    }
-    return nuovo;
-}
-
-int*** copy3d(int*** array){
-    int*** nuovo = malloc(SIZE * sizeof(int**));
-    for (int i = 0; i < SIZE; i++){
-        nuovo[i] = malloc(SIZE * sizeof(int*));
-        for (int j = 0; j < SIZE; j++){
-            nuovo[i][j] = malloc(SIZE * sizeof(int));
-            for (int k = 0; k < SIZE; k++)
-                nuovo[i][j][k] = array[i][j][k];
-        }
-    }
-    return nuovo;
-}
-
-
-int force(int k, int** sudoku, int** r, int** c, int** b, int*** cell, cellist* empty_cell, 
-          list_cellist* stack_cell, prelist* sets)
+int force(int k)
 {
     /********************************************
      * FORZA RICORSIVAMENTE UN NUMERO NEL MARKUP DELLA PRIMA CELLA DISPONIBILE
@@ -916,35 +907,37 @@ int force(int k, int** sudoku, int** r, int** c, int** b, int*** cell, cellist* 
      ********************************************/
     if (empty_cell->size == 0)
     {
-        print_sudoku(sudoku);
+        print_sudoku();
         return 1;
     }
-    cell_struct minima = cell_get_min(empty_cell, cell);
+    cell_struct minima = cell_get_min(empty_cell);
     int i = minima.i;
     int j = minima.j;
     for (int x = 0; x < SIZE; x++)
     {
-        if (cell[i][j][x] == 0)
+        if (cell[minima.i][minima.j][x] == 0)
             continue;
-        int value = cell[i][j][x];
+        int value = cell[minima.i][minima.j][x];
         sudoku[i][j] = value;
-        if (check_sudo(i, j, sudoku) == -1)
+        if (check_sudo(i, j) == -1)
         {
             sudoku[i][j] = 0;
             continue;
         }
         sudoku[i][j] = 0;
-        list_cell_add(stack_cell, empty_cell); //AGGIUNGO IL PUNTATORE ALLA LISTA DI CELLE NELL ARRAY
-        empty_cell = cell_copy(empty_cell); //CREO UNA COPIA DELLA LISTA DI CELLE AGGIUNTA NELL ARRAY
+        stack_add_list(empty_cell);
+        cell_destroy(empty_cell);
+        empty_cell = cell_create();
         sudoku[i][j] = value;
-        celllist_remove(empty_cell, minima); //LA MODIFICO SENZA INFLUENZARE LA ZONA DI MEMORIA A CUI PUNTA LA LISTA AGGIUNTA INIZIALMENTE
-        int res = update(1, sudoku, r, c, b, cell, empty_cell, sets); // TENTO DI TROVARE UNA SOLUZIONE
+        celllist_remove(empty_cell, minima);
+        int res = update(1); // TENTO DI TROVARE UNA SOLUZIONE
         if (res == -1 || res == 2)
         { // ARRIVO AD UNA SOLUZIONE SBAGLIATA, VIENE VIOLATO IL SUDOKU
-            cellist *l = list_cell_pop(stack_cell); //RIPRENDO LA ZONA DI MEMORIA IN CUI AVEVO MESSO LE CELLE
-            cell_destroy(empty_cell);  //LIBERO QUELLA ATTUALE, NON MI SERVE PIU
-            empty_cell = l; //ASSEGNO LA ZONA DI MEMORIA MESSA IN PRECEDENZA
-            restore_sudoku(sudoku, r, c, b, empty_cell);
+            cellist *l = stack_pop_list();
+            cell_destroy(empty_cell);
+            empty_cell = l;
+            clear_preemptive();
+            restore_sudoku();
             //CHIAMO UPDATE PER FAR IL MARKUP DEL SUDOKU, TECNICAMENTE E' QUELLO PRECEDENTE, MA PER SEMPLICITA LO RICALCOLO OGNI VOLTA
         }
         else
@@ -953,27 +946,34 @@ int force(int k, int** sudoku, int** r, int** c, int** b, int*** cell, cellist* 
                 return 1;
             else
             { // ALTRIMENTI DEVO FORZARE ANCORA QUINDI CHIAMO LA FUNZIONE FORCE
-                int res = force(k + 1, sudoku, r, c, b, cell, empty_cell, stack_cell, sets);
+                int res = force(k + 1);
                 if (res == 1)
                     return 1;
-                cellist* l = list_cell_pop(stack_cell);
+                cellist *l = stack_pop_list();
                 cell_destroy(empty_cell);
                 empty_cell = l;
-                restore_sudoku(sudoku, r, c, b, empty_cell);
+                restore_sudoku();
+                clear_preemptive();
             }
         }
     }
+
     return 0;
 }
 
-int*** init_cell(int** sudoku)
+int stacklist_create()
 {
-    int*** cell = malloc(SIZE * sizeof(int**));
+    stack_cell = (cellist **)malloc(sizeof(cellist *));
+    size_stack += 1;
+    return 0;
+}
+
+int init_cell()
+{
     for (int i = 0; i < SIZE; i++)
-    {   cell[i] = malloc(SIZE * sizeof(int*));
+    {
         for (int j = 0; j < SIZE; j++)
         {
-            cell[i][j] = malloc(SIZE * sizeof(int));
             if (sudoku[i][j] == 0)
             {
                 for (int k = 0; k < SIZE; k++)
@@ -981,79 +981,57 @@ int*** init_cell(int** sudoku)
             }
         }
     }
-    return cell;
-}
-
-int markup_init(int** arr)
-{
-    for(int i = 0; i < SIZE; i++){
-        for (int j = 0; j < SIZE; j++)
-            arr[i][j] = 0;
-    }
     return 0;
 }
 
-int** init_rcb(){
-    //INIZIALIZZA UN'ARRAY CHE CONTIENE I VALORI POSSIBILI PER RIGHE, COLONNE E BOX
-    int** rcb = malloc(SIZE * sizeof(int*));
-    for (int i = 0; i < SIZE; i++){
-        rcb[i] = malloc(SIZE * sizeof(int));
+int markup_init()
+{
+    for (int i = 0; i < SIZE; i++)
+    {
         for (int j = 0; j < SIZE; j++)
-            rcb[i][j] = 0;
+        {
+            righe[i][j] = 0;
+            colonne[i][j] = 0;
+            boxs[i][j] = 0;
+        }
     }
-    return rcb;
+    return 0;
 }
 
 int main(int argc, char *argv[])
 {
-    int** sudoku = read_input(argv[1]);
-    if (sudoku == NULL)
-        return 0;
-    int**  righe = init_rcb();
-    int**  colonne = init_rcb();
-    int**  boxs = init_rcb();
-    int*** cell = init_cell(sudoku); //INIZIALIZZO L'ARRAY DEL MARKUP DELLE CELLE
-    list_cellist* stack_cell = list_cell_create();
-    cellist *empty_cell = cell_create();
-    prelist *sets = preemp_create();
     time_t t;
     srand((unsigned)time(&t));
+    init_cell();   //INIZIALIZZO L'ARRAY DEL MARKUP DELLE CELLE
+    markup_init(); //INIZIALIZZO L'ARRAY DEI MARKUP DELLE RIGHE, COLONNE, BOXS
+    if (read_input(argv[1]) == 1)
+        return 0;
     clock_t t1, t2;
     t1 = clock();
     intervallo = sqrt(SIZE);
+    //stack = matrstack_create();
+    stacklist_create();
+    empty_cell = cell_create();
+    sets = preemp_create();
     printf("SUDOKU IN INPUT\n");
-    print_sudoku(sudoku);
+    print_sudoku();
     printf("\nSOLUZIONE\\I\n");
     printf("----------------------\n");
-    update(0, sudoku, righe, colonne, boxs, cell, empty_cell, sets);
-    if (check(sudoku) == -1)
-        find_preemptive(sudoku, righe, colonne, boxs, cell, empty_cell, sets); //POTREI RIMUOVERLA
+    update(0);
+    if (check() == -1)
+        find_preemptive(); //POTREI RIMUOVERLA
     for (int i = 0; i < SIZE; i++)
-        markup(sudoku, i, righe, colonne, boxs); //RICREO IL MARKUP
-    if (check(sudoku) == -1)
-       force(1, sudoku, righe, colonne, boxs, cell, empty_cell, stack_cell, sets);
+        markup(i); //RICREO IL MARKUP
+    if (check() == -1)
+        force(1);
     t2 = clock();
     printf("SERIAL\n");
     printf("COLPI DI CLOCK: %lu\n", t2 - t1);
     printf("TEMPO IMPIEGATO: %fs\n", (double) (t2 - t1) / CLOCKS_PER_SEC);
-    for (int i = 0; i < SIZE; i++){
-        for (int j = 0; j < SIZE; j++)
-            free(cell[i][j]);
-        free(sudoku[i]);
-        free(righe[i]);
-        free(colonne[i]);
-        free(boxs[i]);
-        free(cell[i]);
-    }
-    free(sudoku);
-    free(righe);
-    free(colonne);
-    free(boxs);
-    free(cell);
     return 0;
 }
 
-void print_sudoku(int** sudoku)
+void print_sudoku()
 {
     for (int i = 0; i < SIZE; i++)
         printf(" ___");
@@ -1077,17 +1055,16 @@ void print_sudoku(int** sudoku)
     }
 }
 
-int** read_input(char *filename)
+int read_input(char *filename)
 {
     // IL FILE DEVE AVERE DOPO L'ULTIMA CELLA UN \n
     FILE *fp;
     char line[MAXCHAR];
     fp = fopen(filename, "r");
-    int** sudoku = NULL;
     if (fp == NULL)
     {
         printf("ERRORE IN APERTURA FILE %s\n", filename);
-        return NULL;
+        return 1;
     }
     int i = 0;
     int j = 0;
@@ -1098,10 +1075,8 @@ int** read_input(char *filename)
         SIZE = 16;
     else
         SIZE = 9;
-    sudoku = malloc(SIZE * sizeof(int*));
     while (fgets(line, MAXCHAR, fp))
     {
-        sudoku[i] = malloc(SIZE * sizeof(int));
         for (int x = 0; x < MAXCHAR; x++)
         {
             if (line[x] == '\n' && x == 0)
@@ -1129,5 +1104,5 @@ int** read_input(char *filename)
             lenchar++;
         }
     }
-    return sudoku;
+    return 0;
 }

@@ -75,7 +75,8 @@ extern inline unsigned int cell_size(cellist* l) {
  */
 void cell_add(cellist* l, cell_struct item)
 {
-    //printf("ADDING: c[%d][%d]\n", item.i, item.j);
+    // printf("ADDING: c[%d][%d]\n", item.i, item.j);
+	// printf("l->size: %d\n", l->size);
 	cell_allocate(l, l->size + 1);
 	l->body[l->size++] = item;
 }
@@ -281,10 +282,10 @@ int _binarySearch_cell(cellist* arr, int start, int end, cell_struct element){
 
 cell_struct celllist_remove(cellist* l, cell_struct c){
     int idx = binarySearch_cell(l, c);
-	cell_struct r = l->body[idx];
-	//printf("index: %d\n", idx);
-    if (idx != -1)
-        cell_remove(l, idx);
-        //printf("REMOVED: c[%d][%d]\n", c1.i, c1.j);}
-	return r;
+    if (idx != -1){
+		cell_struct r = l->body[idx];
+		cell_remove(l, idx);
+		return r;
+	}
+	return c;
 }

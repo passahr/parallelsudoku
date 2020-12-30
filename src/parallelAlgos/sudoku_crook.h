@@ -1,6 +1,8 @@
 #ifndef _SUDOKU_CROOK_H
 #define _SUDOKU_CROOK_H
 
+#include <time.h>
+
 #include "../datastructures/arraylist.h"
 #include "../datastructures/preemptive_set.h"
 #include "../datastructures/cellist.h"
@@ -26,6 +28,7 @@ typedef struct{
     list_cellist* stack_cell;
     prelist* sets;
     cell_struct cella;
+    clock_t t1;
 
 }args;
 
